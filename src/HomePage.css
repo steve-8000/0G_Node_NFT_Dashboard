@@ -1,0 +1,34 @@
+@keyframes floatAnimation0 {
+  0%, 100% {
+    transform: translateY(0px) translateX(0px);
+  }
+  33% {
+    transform: translateY(-10px) translateX(5px);
+  }
+  66% {
+    transform: translateY(5px) translateX(-5px);
+  }
+}
+
+@keyframes floatAnimation1 {
+  0%, 100% {
+    transform: translateY(0px) translateX(0px);
+  }
+  50% {
+    transform: translateY(-8px) translateX(-8px);
+  }
+}
+
+@keyframes floatAnimation2 {
+  0%, 100% {
+    transform: translateY(0px) translateX(0px);
+  }
+  25% {
+    transform: translateY(8px) translateX(8px);
+  }
+  75% {
+    transform: translateY(-5px) translateX(-3px);
+  }
+}
+
+
