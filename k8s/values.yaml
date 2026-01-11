@@ -16,6 +16,9 @@ monitoring:
       persistence:
         enabled: true
         size: 10Gi
+        accessModes:
+          - ReadWriteOnce
+        storageClassName: nfs-sc
       service:
         type: NodePort
       ingress:
@@ -34,19 +37,20 @@ monitoring:
     prometheus:
       enabled: true
       prometheusSpec:
-        retention: 30d
+        retention: 15d
         storageSpec:
           volumeClaimTemplate:
             spec:
               accessModes: ["ReadWriteOnce"]
+              storageClassName: nfs-sc
               resources:
                 requests:
-                  storage: 50Gi
+                  storage: 100Gi
         serviceMonitorSelectorNilUsesHelmValues: false
         podMonitorSelectorNilUsesHelmValues: false
         ruleSelectorNilUsesHelmValues: false
       service:
-        type: NodePort
+        type: ClusterIP
       ingress:
         enabled: true
         ingressClassName: nginx
@@ -66,12 +70,14 @@ monitoring:
         storage:
           volumeClaimTemplate:
             spec:
-              accessModes: ["ReadWriteOnce"]
+              accessModes:
+                - ReadWriteOnce
+              storageClassName: nfs-sc
               resources:
                 requests:
                   storage: 10Gi
       service:
-        type: NodePort
+        type: ClusterIP
       ingress:
         enabled: true
         ingressClassName: nginx
