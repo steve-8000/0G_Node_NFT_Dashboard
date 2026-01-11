@@ -16,7 +16,7 @@ spec:
         - values.yaml
   destination:
     server: https://kubernetes.default.svc
-    namespace: default
+    namespace: ""
   syncPolicy:
     automated:
       prune: true
@@ -25,6 +25,7 @@ spec:
     syncOptions:
       - CreateNamespace=true
       - PruneLast=true
+      - Replace=true
     retry:
       limit: 5
       backoff:

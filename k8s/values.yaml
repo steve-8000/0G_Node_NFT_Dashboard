@@ -93,6 +93,8 @@ ingress-nginx:
   enabled: true
   
   controller:
+    fullnameOverride: ingress-nginx
+    namespaceOverride: ingress-nginx
     service:
       type: NodePort
     hostNetwork: true
@@ -109,6 +111,7 @@ ingress-nginx:
 cert-manager:
   enabled: true
   
+  namespaceOverride: cert-manager
   installCRDs: true
   
   # ClusterIssuer는 별도로 생성 (ArgoCD Application에서)
