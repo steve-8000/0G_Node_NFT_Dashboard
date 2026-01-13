@@ -1,7 +1,17 @@
-import { NFTBalance, NFTBalanceResponse, NFTTokenResponse } from '../types';
+import { NFTBalance, NFTBalanceResponse, NFTTokenResponse, NFTToken } from '../types';
 
 const API_BASE_URL = '/api';
 const DELEGATE_ADDRESS = '0x7BDc2aECC3CDaF0ce5a975adeA1C8d84Fd9Be3D9';
+
+// Track transfer history for each NFT to determine current delegation status
+interface TransferRecord {
+  tokenId: string;
+  contractAddress: string;
+  from: string;
+  to: string;
+  timestamp: number;
+  blockNumber: number;
+}
 
 async function fetchTransfersForContract(
   contract: string,
@@ -9,16 +19,21 @@ async function fetchTransfersForContract(
   seenNFTs: Set<string>,
   maxPages: number = 5
 ): Promise<NFTBalance[]> {
-  const delegatedNFTs: NFTBalance[] = [];
+  const delegateAddressLower = DELEGATE_ADDRESS.toLowerCase();
+  const targetAddress = address.toLowerCase();
+  
+  // Track all transfers for each NFT
+  const transferHistory = new Map<string, TransferRecord[]>();
+  
+  // Fetch transfers FROM address (user → delegate: delegation)
   let cursor = 0;
-  const limit = 100;
   let pageCount = 0;
   let hasMore = true;
   
   while (hasMore && pageCount < maxPages) {
     try {
       const response = await fetch(
-        `${API_BASE_URL}/nft/transfers?contract=${contract}&from=${address}&cursor=${cursor}&limit=${limit}`
+        `${API_BASE_URL}/nft/transfers?contract=${contract}&from=${address}&cursor=${cursor}&limit=100`
       );
       
       if (!response.ok) {
@@ -40,38 +55,35 @@ async function fetchTransfersForContract(
         
         for (const transfer of transfers) {
           try {
-            const transferTo = (transfer.to || '').toLowerCase();
+            const contractAddress = (transfer.contract || contract).toLowerCase();
+            const tokenId = transfer.tokenId || transfer.token_id;
             const transferFrom = (transfer.from || '').toLowerCase();
-            const delegateAddressLower = DELEGATE_ADDRESS.toLowerCase();
-            const targetAddress = address.toLowerCase();
+            const transferTo = (transfer.to || '').toLowerCase();
             
-            if (transferTo !== delegateAddressLower || transferFrom !== targetAddress) {
+            if (!contractAddress || !tokenId) continue;
+            
+            // Since we're querying from=${address}, transferFrom is always targetAddress
+            // Only track transfers TO delegate address (user → delegate: delegation)
+            if (transferTo !== delegateAddressLower) {
               continue;
             }
             
-            const contractAddress = transfer.contract || contract;
-            const tokenId = transfer.tokenId || transfer.token_id;
+            const nftKey = `${contractAddress}-${tokenId}`;
+            const timestamp = transfer.timestamp || transfer.block_timestamp || 0;
+            const blockNumber = transfer.blockNumber || transfer.block_number || 0;
             
-            if (contractAddress && tokenId) {
-              const nftKey = `${contractAddress.toLowerCase()}-${tokenId}`;
-              
-              if (seenNFTs.has(nftKey)) {
-                continue;
-              }
-              
-              seenNFTs.add(nftKey);
-              
-              delegatedNFTs.push({
-                contractAddress: contractAddress,
-                tokenId: tokenId.toString(),
-                tokenUri: transfer.tokenUri || transfer.token_uri || '',
-                name: transfer.name || '',
-                symbol: transfer.symbol || '',
-                image: transfer.image || `https://node-sale-nft-images.0g.ai/${tokenId}.png`,
-                balance: '1',
-                type: 'ERC721',
-              });
+            if (!transferHistory.has(nftKey)) {
+              transferHistory.set(nftKey, []);
             }
+            
+            transferHistory.get(nftKey)!.push({
+              tokenId: tokenId.toString(),
+              contractAddress,
+              from: transferFrom,
+              to: transferTo,
+              timestamp,
+              blockNumber,
+            });
           } catch (e) {
             continue;
           }
@@ -81,10 +93,10 @@ async function fetchTransfersForContract(
           cursor = data.result.next;
         } else if (data.result.cursor !== undefined && data.result.cursor !== null) {
           cursor = data.result.cursor;
-        } else if (transfers.length < limit) {
+        } else if (transfers.length < 100) {
           hasMore = false;
         } else {
-          cursor += limit;
+          cursor += 100;
         }
       } else {
         hasMore = false;
@@ -94,6 +106,165 @@ async function fetchTransfersForContract(
       hasMore = false;
       break;
     }
+  }
+  
+  // Fetch transfers TO address (delegate → user: return/withdrawal)
+  cursor = 0;
+  pageCount = 0;
+  hasMore = true;
+  
+  while (hasMore && pageCount < maxPages) {
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/nft/transfers?contract=${contract}&to=${address}&cursor=${cursor}&limit=100`
+      );
+      
+      if (!response.ok) {
+        hasMore = false;
+        break;
+      }
+      
+      const data = await response.json();
+      
+      if (data.status === '1' && data.result) {
+        const transfers = Array.isArray(data.result.list) ? data.result.list : [];
+        
+        if (transfers.length === 0) {
+          hasMore = false;
+          break;
+        }
+        
+        pageCount++;
+        
+        for (const transfer of transfers) {
+          try {
+            const contractAddress = (transfer.contract || contract).toLowerCase();
+            const tokenId = transfer.tokenId || transfer.token_id;
+            const transferFrom = (transfer.from || '').toLowerCase();
+            const transferTo = (transfer.to || '').toLowerCase();
+            
+            if (!contractAddress || !tokenId) continue;
+            
+            // Only track transfers related to delegate address
+            if (transferFrom !== delegateAddressLower || transferTo !== targetAddress) {
+              continue;
+            }
+            
+            const nftKey = `${contractAddress}-${tokenId}`;
+            const timestamp = transfer.timestamp || transfer.block_timestamp || 0;
+            const blockNumber = transfer.blockNumber || transfer.block_number || 0;
+            
+            if (!transferHistory.has(nftKey)) {
+              transferHistory.set(nftKey, []);
+            }
+            
+            transferHistory.get(nftKey)!.push({
+              tokenId: tokenId.toString(),
+              contractAddress,
+              from: transferFrom,
+              to: transferTo,
+              timestamp,
+              blockNumber,
+            });
+          } catch (e) {
+            continue;
+          }
+        }
+        
+        if (data.result.next !== undefined && data.result.next !== null) {
+          cursor = data.result.next;
+        } else if (data.result.cursor !== undefined && data.result.cursor !== null) {
+          cursor = data.result.cursor;
+        } else if (transfers.length < 100) {
+          hasMore = false;
+        } else {
+          cursor += 100;
+        }
+      } else {
+        hasMore = false;
+        break;
+      }
+    } catch (error) {
+      hasMore = false;
+      break;
+    }
+  }
+  
+  // Determine current delegation status for each NFT
+  const delegatedNFTs: NFTBalance[] = [];
+  
+  for (const [nftKey, transfers] of transferHistory.entries()) {
+    if (seenNFTs.has(nftKey)) {
+      continue;
+    }
+    
+    // Filter out invalid transfers
+    const validTransfers = transfers.filter(t => t.timestamp > 0 || t.blockNumber > 0);
+    
+    if (validTransfers.length === 0) {
+      // If no valid transfers, check if there's at least one delegation transfer
+      // (user → delegate) and assume it's still delegated if no return transfer exists
+      const hasDelegation = transfers.some(t => 
+        t.from === targetAddress && t.to === delegateAddressLower
+      );
+      const hasReturn = transfers.some(t => 
+        t.from === delegateAddressLower && t.to === targetAddress
+      );
+      
+      if (hasDelegation && !hasReturn) {
+        // Has delegation but no return - assume still delegated
+        const [contractAddress, tokenId] = nftKey.split('-');
+        seenNFTs.add(nftKey);
+        delegatedNFTs.push({
+          contractAddress: contractAddress,
+          tokenId: tokenId,
+          tokenUri: '',
+          name: '',
+          symbol: '',
+          image: `https://node-sale-nft-images.0g.ai/${tokenId}.png`,
+          balance: '1',
+          type: 'ERC721',
+        });
+      }
+      continue;
+    }
+    
+    // Sort transfers by timestamp (most recent first), fallback to blockNumber
+    validTransfers.sort((a, b) => {
+      if (a.timestamp > 0 && b.timestamp > 0) {
+        return b.timestamp - a.timestamp;
+      }
+      if (a.blockNumber > 0 && b.blockNumber > 0) {
+        return b.blockNumber - a.blockNumber;
+      }
+      return 0;
+    });
+    
+    // Check the most recent transfer to determine current status
+    const latestTransfer = validTransfers[0];
+    
+    // If latest transfer is FROM user TO delegate, it's currently delegated
+    // If latest transfer is FROM delegate TO user, it's returned (not delegated) - exclude it
+    const isDelegated = latestTransfer.from === targetAddress && latestTransfer.to === delegateAddressLower;
+    
+    if (isDelegated) {
+      // Currently delegated - add to list
+      const [contractAddress, tokenId] = nftKey.split('-');
+      
+      seenNFTs.add(nftKey);
+      
+      delegatedNFTs.push({
+        contractAddress: contractAddress,
+        tokenId: tokenId,
+        tokenUri: '',
+        name: '',
+        symbol: '',
+        image: `https://node-sale-nft-images.0g.ai/${tokenId}.png`,
+        balance: '1',
+        type: 'ERC721',
+      });
+    }
+    // If returned, don't include it (it's not delegated anymore)
   }
   
   return delegatedNFTs;
@@ -217,7 +388,13 @@ export async function fetchNFTBalances(address: string, retryCount = 0): Promise
     
     if (firstData.status !== '1' || !firstData.result) {
       console.warn('NFT 조회 실패:', firstData);
-      return [];
+      // If API returns error but we have some data, try to use it
+      if (firstData.result && firstData.result.list && firstData.result.list.length > 0) {
+        console.warn('API status is not "1" but has data, attempting to use it');
+        // Continue with the data we have
+      } else {
+        return [];
+      }
     }
 
     const totalCount = firstData.result.total || 0;
@@ -234,43 +411,59 @@ export async function fetchNFTBalances(address: string, retryCount = 0): Promise
     }
 
     if (totalPages > 1) {
-      const pagePromises: Promise<any[]>[] = [];
+      const pagePromises: Promise<{ list: NFTToken[]; next?: string | number | null }>[] = [];
+      let nextCursor = firstData.result.next;
       
+      // Use cursor-based pagination if available, otherwise use page-based
       for (let page = 2; page <= totalPages; page++) {
         const pageController = new AbortController();
         const pageTimeoutId = setTimeout(() => pageController.abort(), 30000);
         
+        // Try cursor-based pagination first (if next cursor is available)
+        const url = nextCursor 
+          ? `${API_BASE_URL}/nft/tokens?owner=${address}&limit=${pageSize}&cursor=${nextCursor}`
+          : `${API_BASE_URL}/nft/tokens?owner=${address}&limit=${pageSize}&page=${page}`;
+        
         pagePromises.push(
-          fetch(`${API_BASE_URL}/nft/tokens?owner=${address}&limit=${pageSize}&page=${page}`, {
+          fetch(url, {
             signal: pageController.signal,
           })
             .then(async (response) => {
               clearTimeout(pageTimeoutId);
               if (!response.ok) {
                 console.warn(`페이지 ${page} 조회 실패: ${response.statusText}`);
-                return [];
+                return { list: [], next: null };
               }
               const data: NFTTokenResponse = await response.json();
               if (data.status === '1' && data.result && data.result.list) {
                 console.log(`페이지 ${page} 로드 완료: ${data.result.list.length}개`);
-                return data.result.list;
+                // Update next cursor for next iteration
+                if (data.result.next) {
+                  nextCursor = data.result.next;
+                }
+                return { list: data.result.list, next: data.result.next };
               }
               console.warn(`페이지 ${page} 데이터 형식 오류:`, data);
-              return [];
+              return { list: [], next: null };
             })
             .catch((error) => {
               console.error(`페이지 ${page} 조회 중 오류:`, error);
-              return [];
+              return { list: [], next: null };
             })
         );
       }
 
       const pageResults = await Promise.all(pagePromises);
       let loadedCount = 0;
-      pageResults.forEach((tokens, index) => {
+      pageResults.forEach((result, index) => {
+        const tokens = result.list;
         allTokens.push(...tokens);
         loadedCount += tokens.length;
         console.log(`페이지 ${index + 2} 추가 완료: ${tokens.length}개 (누적: ${allTokens.length}개)`);
+        // Update cursor if available
+        if (result.next) {
+          nextCursor = result.next;
+        }
       });
       console.log(`나머지 페이지 로드 완료: 총 ${loadedCount}개 추가됨`);
     }

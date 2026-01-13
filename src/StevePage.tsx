@@ -176,9 +176,17 @@ function StevePage() {
       return;
     }
 
-    const currentAccount = await getCurrentAccount();
-    if (currentAccount) {
-      setConnectedWallet(currentAccount.toLowerCase());
+    try {
+      // Check and switch to 0G network if needed
+      await switchToZeroGNetwork();
+      
+      const currentAccount = await getCurrentAccount();
+      if (currentAccount) {
+        setConnectedWallet(currentAccount.toLowerCase());
+      }
+    } catch (err) {
+      // Silently fail - user may not have MetaMask connected
+      console.warn('Network check failed:', err);
     }
   };
 

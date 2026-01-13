@@ -37,6 +37,7 @@ export interface NFTTokenResponse {
   result: {
     total: number;
     list: NFTToken[];
+    next?: string | number | null; // Cursor for pagination
   };
 }
 

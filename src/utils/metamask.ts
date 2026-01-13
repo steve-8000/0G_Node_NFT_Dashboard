@@ -38,6 +38,17 @@ export async function switchToZeroGNetwork(): Promise<boolean> {
   }
 
   try {
+    // Check current chain ID first
+    const currentChainId = await window.ethereum.request({
+      method: 'eth_chainId',
+    });
+
+    // If already on 0G network, return
+    if (currentChainId === ZERO_G_NETWORK.chainId) {
+      return true;
+    }
+
+    // Switch to 0G network
     await window.ethereum.request({
       method: 'wallet_switchEthereumChain',
       params: [{ chainId: ZERO_G_NETWORK.chainId }],
