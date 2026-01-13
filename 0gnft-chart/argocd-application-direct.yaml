@@ -9,7 +9,7 @@ spec:
   project: default
   source:
     # 로컬 디렉토리를 직접 사용 (ArgoCD가 클러스터 내부에서 접근 가능한 경우)
-    path: /root/0gnft/k8s
+    path: 0gnft-chart/k8s
     directory:
       recurse: true
   destination:
