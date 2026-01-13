@@ -1,0 +1,35 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: 0gainode
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/your-org/0gnft  # Git 저장소 URL로 변경 필요
+    targetRevision: HEAD
+    path: k8s  # k8s 디렉토리에 매니페스트 파일이 있는 경우
+    directory:
+      recurse: true
+  # 또는 로컬 파일을 직접 사용하는 경우:
+  # source:
+  #   path: /root/0gnft
+  #   directory:
+  #     recurse: true
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: default
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m

@@ -1,0 +1,81 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: 0gainode-ingress
+  namespace: default
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    cert-manager.io/cluster-issuer: letsencrypt-prod  # cert-manager 사용 시
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/proxy-body-size: "10m"
+    nginx.ingress.kubernetes.io/configuration-snippet: |
+      more_set_headers "Strict-Transport-Security: max-age=31536000; includeSubDomains";
+      more_set_headers "X-Frame-Options: SAMEORIGIN";
+      more_set_headers "X-Content-Type-Options: nosniff";
+      more_set_headers "X-XSS-Protection: 1; mode=block";
+spec:
+  tls:
+    - hosts:
+        - 0gainode.zstake.xyz
+      secretName: 0gainode-tls
+  rules:
+    - host: 0gainode.zstake.xyz
+      http:
+        paths:
+          # DB API 프록시
+          - path: /db-api
+            pathType: Prefix
+            backend:
+              service:
+                name: 0gnft-backend
+                port:
+                  number: 3001
+          # Chainscan API 프록시
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: chainscan-proxy
+                port:
+                  number: 443
+            # 또는 직접 외부 서비스로 프록시하려면:
+            # nginx.ingress.kubernetes.io/upstream-vhost: chainscan.0g.ai
+          # React 앱 (가장 마지막)
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: 0gnft-frontend
+                port:
+                  number: 80
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: 0gnft-backend
+  namespace: default
+spec:
+  type: ClusterIP
+  ports:
+    - port: 3001
+      targetPort: 3001
+      protocol: TCP
+  selector:
+    app: 0gnft-backend
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: 0gnft-frontend
+  namespace: default
+spec:
+  type: ClusterIP
+  ports:
+    - port: 80
+      targetPort: 80
+      protocol: TCP
+  selector:
+    app: 0gnft-frontend

@@ -1,0 +1,123 @@
+# Kubernetes Infrastructure Umbrella Chart Values
+
+global:
+  # Global settings
+
+# Monitoring Stack (Prometheus, Grafana, Alertmanager)
+monitoring:
+  enabled: true
+  
+  kube-prometheus-stack:
+    # Grafana 설정
+    grafana:
+      enabled: true
+      adminUser: admin
+      adminPassword: admin
+      persistence:
+        enabled: true
+        size: 10Gi
+        accessModes:
+          - ReadWriteOnce
+        storageClassName: nfs-sc
+      service:
+        type: NodePort
+      ingress:
+        enabled: true
+        ingressClassName: nginx
+        hosts:
+          - host: grafana.zstake.xyz
+            paths:
+              - /
+        tls:
+          - secretName: grafana-zstake-xyz-tls
+            hosts:
+              - grafana.zstake.xyz
+    
+    # Prometheus 설정
+    prometheus:
+      enabled: true
+      prometheusSpec:
+        retention: 15d
+        storageSpec:
+          volumeClaimTemplate:
+            spec:
+              accessModes: ["ReadWriteOnce"]
+              storageClassName: nfs-sc
+              resources:
+                requests:
+                  storage: 100Gi
+        serviceMonitorSelectorNilUsesHelmValues: false
+        podMonitorSelectorNilUsesHelmValues: false
+        ruleSelectorNilUsesHelmValues: false
+      service:
+        type: ClusterIP
+      ingress:
+        enabled: true
+        ingressClassName: nginx
+        hosts:
+          - host: prometheus.zstake.xyz
+            paths:
+              - /
+        tls:
+          - secretName: prometheus-zstake-xyz-tls
+            hosts:
+              - prometheus.zstake.xyz
+    
+    # Alertmanager 설정
+    alertmanager:
+      enabled: true
+      alertmanagerSpec:
+        storage:
+          volumeClaimTemplate:
+            spec:
+              accessModes:
+                - ReadWriteOnce
+              storageClassName: nfs-sc
+              resources:
+                requests:
+                  storage: 10Gi
+      service:
+        type: ClusterIP
+      ingress:
+        enabled: true
+        ingressClassName: nginx
+        hosts:
+          - host: alert.zstake.xyz
+            paths:
+              - /
+        tls:
+          - secretName: alert-zstake-xyz-tls
+            hosts:
+              - alert.zstake.xyz
+    
+    # Prometheus Operator 설정
+    prometheusOperator:
+      enabled: true
+
+# Nginx Ingress Controller
+ingress-nginx:
+  enabled: true
+  
+  controller:
+    fullnameOverride: ingress-nginx
+    namespaceOverride: ingress-nginx
+    service:
+      type: NodePort
+    hostNetwork: true
+    publishService:
+      enabled: false
+    metrics:
+      enabled: true
+    admissionWebhooks:
+      enabled: true
+      patch:
+        enabled: true
+
+# Cert-Manager
+cert-manager:
+  enabled: true
+  
+  namespaceOverride: cert-manager
+  installCRDs: true
+  
+  # ClusterIssuer는 별도로 생성 (ArgoCD Application에서)

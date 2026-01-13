@@ -1,0 +1,106 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: 0gnft-backend
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: 0gnft-backend
+  template:
+    metadata:
+      labels:
+        app: 0gnft-backend
+    spec:
+      containers:
+      - name: backend
+        image: node:18-alpine
+        workingDir: /app
+        command: ["node", "server.js"]
+        ports:
+        - containerPort: 3001
+        volumeMounts:
+        - name: app-volume
+          mountPath: /app
+        - name: db-volume
+          mountPath: /app/nft_data.db
+          subPath: nft_data.db
+      volumes:
+      - name: app-volume
+        hostPath:
+          path: /root/0gnft/server
+          type: Directory
+      - name: db-volume
+        hostPath:
+          path: /root/0gnft/server/nft_data.db
+          type: File
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: 0gnft-frontend
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: 0gnft-frontend
+  template:
+    metadata:
+      labels:
+        app: 0gnft-frontend
+    spec:
+      containers:
+      - name: frontend
+        image: nginx:alpine
+        ports:
+        - containerPort: 80
+        volumeMounts:
+        - name: frontend-volume
+          mountPath: /usr/share/nginx/html
+        - name: nginx-config
+          mountPath: /etc/nginx/conf.d/default.conf
+          subPath: default.conf
+      volumes:
+      - name: frontend-volume
+        hostPath:
+          path: /var/www/0gnft
+          type: Directory
+      - name: nginx-config
+        configMap:
+          name: 0gnft-nginx-config
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: 0gnft-nginx-config
+  namespace: default
+data:
+  default.conf: |
+    server {
+        listen 80;
+        server_name _;
+        root /usr/share/nginx/html;
+        
+        # Gzip 압축
+        gzip on;
+        gzip_vary on;
+        gzip_min_length 1024;
+        gzip_types text/plain text/css text/xml text/javascript application/x-javascript application/xml+rss application/json application/javascript;
+        
+        # React 앱 라우팅
+        location / {
+            try_files $uri $uri/ /index.html;
+            index index.html;
+        }
+        
+        # 정적 파일 캐싱
+        location ~* \.(jpg|jpeg|png|gif|ico|css|js|svg|woff|woff2|ttf|eot)$ {
+            expires 1y;
+            add_header Cache-Control "public, immutable";
+            access_log off;
+        }
+    }
