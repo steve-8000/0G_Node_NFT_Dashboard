@@ -37,8 +37,8 @@ RUN apk add --no-cache curl
 # Copy built assets
 COPY --from=builder /app/dist /usr/share/nginx/html
 
-# Copy nginx configuration
-COPY nginx.conf /etc/nginx/templates/default.conf.template
+# Copy nginx configuration directly (not as template)
+COPY nginx.conf /etc/nginx/conf.d/default.conf
 
 # Create nginx directories and set permissions
 RUN mkdir -p /var/cache/nginx/client_temp /var/cache/nginx/proxy_temp /var/cache/nginx/fastcgi_temp /var/cache/nginx/uwsgi_temp /var/cache/nginx/scgi_temp && \
