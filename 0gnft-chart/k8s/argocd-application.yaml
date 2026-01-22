@@ -1,22 +1,21 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: k8s-infrastructure
+  name: 0gnft-app
   namespace: argocd
   finalizers:
     - resources-finalizer.argocd.argoproj.io
+  labels:
+    app: 0gnft
 spec:
   project: default
   source:
-    repoURL: https://github.com/steve-8000/k8s_playground
+    repoURL: https://github.com/steve-8000/0G_Node_NFT_Dashboard.git
     targetRevision: main
-    path: k8s
-    helm:
-      valueFiles:
-        - values.yaml
+    path: 0gnft-chart/k8s
   destination:
     server: https://kubernetes.default.svc
-    namespace: ""
+    namespace: default
   syncPolicy:
     automated:
       prune: true
@@ -32,3 +31,4 @@ spec:
         duration: 5s
         factor: 2
         maxDuration: 3m
+  revisionHistoryLimit: 10
