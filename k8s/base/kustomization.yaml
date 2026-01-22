@@ -1,0 +1,27 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: 0gnft
+
+resources:
+  - namespace.yaml
+  - configmap.yaml
+  - backend-deployment.yaml
+  - frontend-deployment.yaml
+  - service.yaml
+  - pvc.yaml
+  - ingress.yaml
+
+labels:
+  - pairs:
+      app.kubernetes.io/name: zero-gnft
+      app.kubernetes.io/part-of: zero-gnft
+      app.kubernetes.io/managed-by: kustomize
+
+images:
+  - name: 0gnft-backend
+    newName: 0gnft-backend
+    newTag: latest
+  - name: 0gnft-frontend
+    newName: 0gnft-frontend
+    newTag: latest

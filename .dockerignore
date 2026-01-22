@@ -1,0 +1,41 @@
+# Dependencies
+node_modules
+npm-debug.log
+yarn-error.log
+
+# Build outputs
+dist
+build
+*.log
+
+# Development files
+.git
+.gitignore
+.vscode
+.idea
+*.md
+README*
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Testing
+coverage
+.nyc_output
+
+# Misc
+.DS_Store
+*.swp
+*.swo
+*~
+
+# Kubernetes files (not needed in image)
+k8s/
+0gnft-chart/
+setup*.sh
+docker-compose.yml
+
+# Source maps (optional, can be included for debugging)
+*.map

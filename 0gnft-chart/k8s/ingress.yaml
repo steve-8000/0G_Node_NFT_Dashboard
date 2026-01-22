@@ -4,7 +4,6 @@ metadata:
   name: 0gainode-ingress
   namespace: default
   annotations:
-    kubernetes.io/ingress.class: nginx
     cert-manager.io/cluster-issuer: letsencrypt-prod
     nginx.ingress.kubernetes.io/ssl-redirect: "true"
     nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
@@ -15,6 +14,7 @@ metadata:
       more_set_headers "X-Content-Type-Options: nosniff";
       more_set_headers "X-XSS-Protection: 1; mode=block";
 spec:
+  ingressClassName: nginx
   tls:
     - hosts:
         - 0gainode.zstake.xyz
@@ -28,7 +28,7 @@ spec:
             pathType: Prefix
             backend:
               service:
-                name: 0gnft-backend
+                name: zero-gnft-backend
                 port:
                   number: 3001
           # Chainscan API 프록시 (외부 서비스 직접 프록시)
@@ -44,6 +44,6 @@ spec:
             pathType: Prefix
             backend:
               service:
-                name: 0gnft-frontend
+                name: zero-gnft-frontend
                 port:
                   number: 80

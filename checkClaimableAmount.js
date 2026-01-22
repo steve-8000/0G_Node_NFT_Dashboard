@@ -1,7 +1,7 @@
 import { ethers } from 'ethers';
 
 const ZERO_G_RPC = 'https://evmrpc.0g.ai';
-const CLAIM_CONTRACT_ADDRESS = '0x625d65F67cC694Ca5f203B0fe5867D372ed2eC23';
+const CLAIM_CONTRACT_ADDRESS = '0x6a9c6b5507e322aa00eb9c45e80c07ab63acabb6';
 const TARGET_ADDRESS = '0x00AEA25EFa4C90bd9A7F6725BD2202a88564EB80';
 
 // Claim contract ABI
@@ -78,10 +78,31 @@ async function getOwnedTokenIds(address) {
 // Calculate claimable amount for a token ID
 async function getClaimableAmountForToken(tokenId, claimContract) {
   try {
-    // Get claim data
-    const claimData = await claimContract.claimData(tokenId);
-    const consumed = claimData.consumed;
-    const claimed = claimData.claimed;
+    // Get claim data (handle both array and object responses)
+    let claimDataResult;
+    try {
+      claimDataResult = await claimContract.claimData(parseInt(tokenId, 10));
+    } catch (error) {
+      console.warn(`claimData 조회 실패 (tokenId: ${tokenId}), 기본값 사용:`, error.message);
+      claimDataResult = null;
+    }
+    
+    let consumed, claimed;
+    if (claimDataResult) {
+      if (Array.isArray(claimDataResult)) {
+        consumed = claimDataResult[0];
+        claimed = claimDataResult[1];
+      } else if (typeof claimDataResult === 'object') {
+        consumed = claimDataResult.consumed || claimDataResult[0] || '0';
+        claimed = claimDataResult.claimed || claimDataResult[1] || '0';
+      } else {
+        consumed = '0';
+        claimed = '0';
+      }
+    } else {
+      consumed = '0';
+      claimed = '0';
+    }
     
     // Get global parameters
     const allocationPerToken = await claimContract.allocationPerToken();
@@ -131,7 +152,11 @@ async function getClaimableAmountForToken(tokenId, claimContract) {
 // Get total claimed amount from events
 async function getTotalClaimedFromEvents(address, claimContract) {
   try {
-    const provider = new ethers.JsonRpcProvider(ZERO_G_RPC);
+    const network = new ethers.Network('0G Mainnet', 16661);
+    const provider = new ethers.JsonRpcProvider(ZERO_G_RPC, network, {
+      polling: false,
+      batchMaxCount: 1,
+    });
     
     console.log(`\nQuerying RewardClaimed events for address ${address}...`);
     
@@ -177,7 +202,11 @@ async function checkClaimableAmount() {
     console.log(`Address: ${TARGET_ADDRESS}`);
     console.log(`Claim Contract: ${CLAIM_CONTRACT_ADDRESS}\n`);
     
-    const provider = new ethers.JsonRpcProvider(ZERO_G_RPC);
+    const network = new ethers.Network('0G Mainnet', 16661);
+    const provider = new ethers.JsonRpcProvider(ZERO_G_RPC, network, {
+      polling: false,
+      batchMaxCount: 1,
+    });
     const claimContract = new ethers.Contract(CLAIM_CONTRACT_ADDRESS, CLAIM_CONTRACT_ABI, provider);
     
     // Get owned token IDs

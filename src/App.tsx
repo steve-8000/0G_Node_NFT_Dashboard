@@ -87,9 +87,29 @@ function App() {
   const [page, setPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [zeroGPrice, setZeroGPrice] = useState<number | null>(null);
+  const [isOnline, setIsOnline] = useState<boolean>(typeof navigator !== 'undefined' ? navigator.onLine : true);
 
   useEffect(() => {
     checkConnection();
+  }, []);
+
+  // 오프라인/온라인 상태 감지
+  useEffect(() => {
+    const handleOnline = () => {
+      setIsOnline(true);
+    };
+
+    const handleOffline = () => {
+      setIsOnline(false);
+    };
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
   }, []);
 
   useEffect(() => {
@@ -1037,6 +1057,12 @@ function App() {
         </AppBar>
 
         <Container maxWidth="lg" sx={{ mt: 11, mb: 12, pt: 3, px: { xs: 2, sm: 3, md: 4 } }}>
+          {!isOnline && (
+            <Alert severity="warning" sx={{ mb: 3 }}>
+              오프라인 상태입니다. 인터넷 연결을 확인해주세요.
+            </Alert>
+          )}
+
           {error && (
             <Alert severity="error" sx={{ mb: 3 }} onClose={() => setError(null)}>
               {error}

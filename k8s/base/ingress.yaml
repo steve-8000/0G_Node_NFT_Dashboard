@@ -1,0 +1,50 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: 0gnft-ingress
+  namespace: 0gnft
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/proxy-body-size: "10m"
+    nginx.ingress.kubernetes.io/configuration-snippet: |
+      more_set_headers "Strict-Transport-Security: max-age=31536000; includeSubDomains";
+      more_set_headers "X-Frame-Options: SAMEORIGIN";
+      more_set_headers "X-Content-Type-Options: nosniff";
+      more_set_headers "X-XSS-Protection: 1; mode=block";
+    nginx.ingress.kubernetes.io/rate-limit: "100"
+spec:
+  ingressClassName: nginx
+  tls:
+  - hosts:
+    - 0gainode.zstake.xyz
+    secretName: 0gainode-tls
+  rules:
+  - host: 0gainode.zstake.xyz
+    http:
+      paths:
+      # DB API 프록시
+      - path: /db-api
+        pathType: Prefix
+        backend:
+          service:
+            name: zero-gnft-backend
+            port:
+              number: 3001
+      # Chainscan API 프록시
+      - path: /api
+        pathType: Prefix
+        backend:
+          service:
+            name: chainscan-proxy
+            port:
+              number: 443
+      # React 앱 (가장 마지막)
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: zero-gnft-frontend
+            port:
+              number: 80

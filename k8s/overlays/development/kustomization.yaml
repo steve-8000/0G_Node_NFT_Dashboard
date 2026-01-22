@@ -1,0 +1,49 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: 0gnft-dev
+
+bases:
+  - ../../base
+
+namePrefix: dev-
+
+namespace: 0gnft-dev
+
+patchesStrategicMerge:
+  - |-
+    apiVersion: apps/v1
+    kind: Deployment
+    metadata:
+      name: 0gnft-backend
+    spec:
+      replicas: 1
+      template:
+        spec:
+          containers:
+          - name: backend
+            resources:
+              requests:
+                memory: "128Mi"
+                cpu: "100m"
+              limits:
+                memory: "256Mi"
+                cpu: "200m"
+  - |-
+    apiVersion: apps/v1
+    kind: Deployment
+    metadata:
+      name: 0gnft-frontend
+    spec:
+      replicas: 1
+      template:
+        spec:
+          containers:
+          - name: frontend
+            resources:
+              requests:
+                memory: "32Mi"
+                cpu: "25m"
+              limits:
+                memory: "64Mi"
+                cpu: "100m"

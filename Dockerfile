@@ -1,38 +1,58 @@
-# 빌드 스테이지
+# ============================================
+# Stage 1: Dependencies
+# ============================================
+FROM node:18-alpine AS deps
+
+WORKDIR /app
+
+# Install dependencies only when needed
+COPY package.json package-lock.json ./
+RUN npm ci --frozen-lockfile && \
+    npm cache clean --force
+
+# ============================================
+# Stage 2: Builder
+# ============================================
 FROM node:18-alpine AS builder
 
 WORKDIR /app
 
-# 의존성 파일 복사
-COPY package*.json ./
-RUN npm ci
+# Copy dependencies from deps stage
+COPY --from=deps /app/node_modules ./node_modules
 
-# 소스 코드 복사 및 빌드
+# Copy source code
 COPY . .
+
+# Build the application
 RUN npm run build
 
-# 프로덕션 스테이지
-FROM nginx:alpine
+# ============================================
+# Stage 3: Production
+# ============================================
+FROM nginx:1.25-alpine
 
-# 빌드된 파일 복사
+# Install curl for health checks
+RUN apk add --no-cache curl
+
+# Copy built assets
 COPY --from=builder /app/dist /usr/share/nginx/html
 
-# nginx 설정 복사
+# Copy nginx configuration
 COPY nginx.conf /etc/nginx/templates/default.conf.template
 
-# 포트 노출
-EXPOSE 80 443
+# Create nginx user and set permissions
+RUN chown -R nginx:nginx /usr/share/nginx/html && \
+    chmod -R 755 /usr/share/nginx/html
 
-# nginx 실행
+# Health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost/ || exit 1
+
+# Expose port
+EXPOSE 80
+
+# Run as non-root user
+USER nginx
+
+# Start nginx
 CMD ["nginx", "-g", "daemon off;"]
-
-
-
-
-
-
-
-
-
-
-

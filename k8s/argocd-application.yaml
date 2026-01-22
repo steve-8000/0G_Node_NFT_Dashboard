@@ -1,0 +1,56 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: 0gnft-app
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+  labels:
+    app.kubernetes.io/name: 0gnft
+    app.kubernetes.io/part-of: 0gnft
+spec:
+  project: default
+  
+  source:
+    repoURL: https://github.com/steve-8000/0G_Node_NFT_Dashboard.git
+    targetRevision: main
+    path: k8s/base
+    kustomize:
+      images:
+        - name: 0gnft-backend
+          newName: 0gnft-backend
+          newTag: latest
+        - name: 0gnft-frontend
+          newName: 0gnft-frontend
+          newTag: latest
+  
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: 0gnft
+  
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+      allowEmpty: false
+    syncOptions:
+      - CreateNamespace=true
+      - PruneLast=true
+      - ApplyOutOfSyncOnly=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m
+  
+  revisionHistoryLimit: 10
+  
+  ignoreDifferences:
+    - group: apps
+      kind: Deployment
+      jsonPointers:
+        - /spec/replicas
+    - kind: PersistentVolumeClaim
+      jsonPointers:
+        - /spec

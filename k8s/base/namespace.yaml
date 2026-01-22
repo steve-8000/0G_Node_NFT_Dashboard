@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: 0gnft
+  labels:
+    name: 0gnft
+    app.kubernetes.io/name: 0gnft
+    app.kubernetes.io/part-of: 0gnft
