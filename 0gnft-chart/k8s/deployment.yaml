@@ -17,18 +17,32 @@ spec:
     spec:
       containers:
       - name: backend
-        image: node:18-alpine
-        workingDir: /app
-        command: ["sh", "-c", "cd /app && npm install && node server.js"]
+        image: 0gnft-backend:latest  # TODO: 실제 이미지 레지스트리로 변경 필요 (예: registry.example.com/0gnft-backend:latest)
+        imagePullPolicy: IfNotPresent  # 로컬 이미지 사용 시, 프로덕션에서는 Always로 변경
         ports:
         - containerPort: 3001
           name: http
         volumeMounts:
-        - name: app-volume
-          mountPath: /app
+        - name: db-volume
+          mountPath: /app/nft_data.db
+          subPath: nft_data.db
         env:
         - name: PORT
           value: "3001"
+        - name: NODE_ENV
+          value: "production"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 3001
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 3001
+          initialDelaySeconds: 10
+          periodSeconds: 5
         resources:
           requests:
             memory: "128Mi"
@@ -37,10 +51,9 @@ spec:
             memory: "512Mi"
             cpu: "500m"
       volumes:
-      - name: app-volume
-        hostPath:
-          path: /root/0gnft/server
-          type: Directory
+      - name: db-volume
+        persistentVolumeClaim:
+          claimName: 0gnft-db-pvc
 
 ---
 apiVersion: apps/v1
@@ -62,16 +75,27 @@ spec:
     spec:
       containers:
       - name: frontend
-        image: nginx:alpine
+        image: 0gnft-frontend:latest  # TODO: 실제 이미지 레지스트리로 변경 필요 (예: registry.example.com/0gnft-frontend:latest)
+        imagePullPolicy: IfNotPresent  # 로컬 이미지 사용 시, 프로덕션에서는 Always로 변경
         ports:
         - containerPort: 80
           name: http
         volumeMounts:
-        - name: frontend-volume
-          mountPath: /usr/share/nginx/html
         - name: nginx-config
           mountPath: /etc/nginx/conf.d/default.conf
           subPath: default.conf
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 80
+          initialDelaySeconds: 10
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 80
+          initialDelaySeconds: 5
+          periodSeconds: 5
         resources:
           requests:
             memory: "64Mi"
@@ -80,10 +104,6 @@ spec:
             memory: "256Mi"
             cpu: "200m"
       volumes:
-      - name: frontend-volume
-        hostPath:
-          path: /var/www/0gnft
-          type: Directory
       - name: nginx-config
         configMap:
           name: 0gnft-nginx-config
@@ -125,7 +145,7 @@ data:
 apiVersion: v1
 kind: Service
 metadata:
-  name: 0gnft-backend
+  name: zero-gnft-backend
   namespace: default
   labels:
     app: 0gnft-backend
@@ -143,7 +163,7 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: 0gnft-frontend
+  name: zero-gnft-frontend
   namespace: default
   labels:
     app: 0gnft-frontend
@@ -156,6 +176,21 @@ spec:
       name: http
   selector:
     app: 0gnft-frontend
+
+---
+# 백엔드 데이터베이스를 위한 PersistentVolumeClaim
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: 0gnft-db-pvc
+  namespace: default
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+  storageClassName: standard  # TODO: 클러스터의 StorageClass에 맞게 변경 필요
 
 ---
 # Chainscan API 프록시를 위한 ExternalName Service
