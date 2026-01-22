@@ -52,8 +52,8 @@ spec:
       
       containers:
       - name: backend
-        image: 0gnft-backend:latest
-        imagePullPolicy: IfNotPresent
+        image: ghcr.io/steve-8000/0gnft-backend:latest
+        imagePullPolicy: Always
         
         ports:
         - name: http

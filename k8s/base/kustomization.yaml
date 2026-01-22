@@ -20,8 +20,8 @@ labels:
 
 images:
   - name: 0gnft-backend
-    newName: 0gnft-backend
+    newName: ghcr.io/steve-8000/0gnft-backend
     newTag: latest
   - name: 0gnft-frontend
-    newName: 0gnft-frontend
+    newName: ghcr.io/steve-8000/0gnft-frontend
     newTag: latest
