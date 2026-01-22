@@ -41,10 +41,12 @@ COPY --from=builder /app/dist /usr/share/nginx/html
 COPY nginx.conf /etc/nginx/templates/default.conf.template
 
 # Create nginx user and set permissions
+# nginx:alpine 이미지는 이미 nginx 사용자로 실행되므로 root에서만 권한 설정
 RUN chown -R nginx:nginx /usr/share/nginx/html && \
     chmod -R 755 /usr/share/nginx/html && \
-    mkdir -p /var/cache/nginx /var/run /var/log/nginx && \
-    chown -R nginx:nginx /var/cache/nginx /var/run /var/log/nginx
+    mkdir -p /var/cache/nginx/client_temp /var/cache/nginx/proxy_temp /var/cache/nginx/fastcgi_temp /var/cache/nginx/uwsgi_temp /var/cache/nginx/scgi_temp && \
+    chown -R nginx:nginx /var/cache/nginx /var/run /var/log/nginx && \
+    chmod -R 755 /var/cache/nginx
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
