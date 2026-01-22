@@ -2,7 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: 0gnft-backend
-  namespace: default
+  namespace: 0gnft
   labels:
     app: 0gnft-backend
 spec:
@@ -63,7 +63,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: 0gnft-frontend
-  namespace: default
+  namespace: 0gnft
   labels:
     app: 0gnft-frontend
 spec:
@@ -118,7 +118,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: 0gnft-nginx-config
-  namespace: default
+  namespace: 0gnft
 data:
   default.conf: |
     server {
@@ -151,7 +151,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: zero-gnft-backend
-  namespace: default
+  namespace: 0gnft
   labels:
     app: 0gnft-backend
 spec:
@@ -169,7 +169,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: zero-gnft-frontend
-  namespace: default
+  namespace: 0gnft
   labels:
     app: 0gnft-frontend
 spec:
@@ -188,7 +188,7 @@ apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: 0gnft-db-pvc
-  namespace: default
+  namespace: 0gnft
 spec:
   accessModes:
     - ReadWriteOnce
@@ -203,7 +203,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: chainscan-proxy
-  namespace: default
+  namespace: 0gnft
 spec:
   type: ExternalName
   externalName: chainscan.0g.ai
