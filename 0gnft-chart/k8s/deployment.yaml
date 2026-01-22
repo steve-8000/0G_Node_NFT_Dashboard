@@ -26,13 +26,14 @@ spec:
           name: http
         volumeMounts:
         - name: db-volume
-          mountPath: /app/nft_data.db
-          subPath: nft_data.db
+          mountPath: /app/data
         env:
         - name: PORT
           value: "3001"
         - name: NODE_ENV
           value: "production"
+        - name: DB_PATH
+          value: "/app/data/nft_data.db"
         livenessProbe:
           httpGet:
             path: /health

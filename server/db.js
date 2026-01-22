@@ -6,7 +6,9 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 // SQLite 데이터베이스 초기화
-const db = new Database(join(__dirname, 'nft_data.db'));
+// 환경 변수 DB_PATH가 있으면 사용, 없으면 기본 경로 사용
+const dbPath = process.env.DB_PATH || join(__dirname, 'nft_data.db');
+const db = new Database(dbPath);
 
 // 테이블 생성
 db.exec(`
