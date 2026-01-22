@@ -25,6 +25,10 @@ spec:
         prometheus.io/scrape: "true"
         prometheus.io/port: "80"
     spec:
+      # Image pull secrets
+      imagePullSecrets:
+      - name: ghcr-secret
+      
       # Security context
       securityContext:
         runAsNonRoot: true

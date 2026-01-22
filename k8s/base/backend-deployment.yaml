@@ -26,6 +26,10 @@ spec:
         prometheus.io/port: "3001"
         prometheus.io/path: "/metrics"
     spec:
+      # Image pull secrets
+      imagePullSecrets:
+      - name: ghcr-secret
+      
       # Security context
       securityContext:
         runAsNonRoot: true
